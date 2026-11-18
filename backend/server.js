@@ -379,14 +379,31 @@ const INITIAL_DB = {
   ],
 };
 
+// در production دیتابیس خالی ساخته می‌شود تا داده‌های نمونه وارد سیستم واقعی نشوند
+const EMPTY_DB = {
+  adminPhone: process.env.ADMIN_PHONE || '',
+  staff: [],
+  customers: [],
+  suppliers: [],
+  supplierPayments: [],
+  inventory: [],
+  purchases: [],
+  sales: [],
+  repairs: [],
+};
+
+const IS_PROD = process.env.NODE_ENV === 'production';
+
 const readDB = () => {
+  const baseTemplate = IS_PROD ? EMPTY_DB : INITIAL_DB;
   if (!fs.existsSync(DB_FILE)) {
-    const fresh = JSON.parse(JSON.stringify(INITIAL_DB)); // کپی عمیق تا ثابت اصلی دست نخورد
+    const fresh = JSON.parse(JSON.stringify(baseTemplate)); // کپی عمیق تا ثابت اصلی دست نخورد
+    if (process.env.ADMIN_PHONE) fresh.adminPhone = process.env.ADMIN_PHONE;
     writeDB(fresh);
     return fresh;
   }
   const data = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
-  const defaults = JSON.parse(JSON.stringify(INITIAL_DB));
+  const defaults = JSON.parse(JSON.stringify(baseTemplate));
   for (const key of ['customers', 'staff', 'suppliers', 'supplierPayments', 'inventory', 'purchases', 'sales', 'repairs']) {
     if (!data[key]) data[key] = defaults[key];
   }
@@ -1610,6 +1627,40 @@ app.post('/api/repairs/:id/rating', requireAnyUser, (req, res) => {
 
   writeDB(db);
   res.json(sanitizeRepairForCustomer(repair));
+});
+
+// ==========================================
+// پنل پیامک — ارسال گروهی به مشتریان انتخاب‌شده
+// ==========================================
+
+app.post('/api/sms/send', requireAuth('sms'), async (req, res) => {
+  const { repairIds, message } = req.body;
+  const cleanMsg = String(message || '').trim().slice(0, 500);
+
+  if (!cleanMsg || !Array.isArray(repairIds) || repairIds.length === 0) {
+    return res.status(400).json({ error: 'گیرندگان و متن پیامک الزامی است' });
+  }
+
+  const db = readDB();
+  const phones = [
+    ...new Set(
+      db.repairs
+        .filter((r) => repairIds.includes(r.id) && isValidPhone(r.phone))
+        .map((r) => r.phone)
+    ),
+  ];
+
+  if (phones.length === 0) {
+    return res.status(404).json({ error: 'شماره معتبری برای ارسال یافت نشد' });
+  }
+
+  let sentCount = 0;
+  for (const phone of phones) {
+    const result = await sendSms(phone, cleanMsg);
+    if (result.success) sentCount += 1;
+  }
+
+  res.json({ success: true, sentCount, total: phones.length });
 });
 
 // ==========================================

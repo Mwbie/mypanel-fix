@@ -114,6 +114,7 @@ export default function MobileRepairDashboard({
     phone: "",
     device: "",
     issue: "",
+    agreedCost: "",
     referredByCode: "",
   });
 
@@ -417,6 +418,7 @@ export default function MobileRepairDashboard({
           phone: cleanPhone,
           device: newRepair.device.trim(),
           issue: newRepair.issue.trim(),
+          agreedCost: Number(newRepair.agreedCost) || 0,
           referredByCode: newRepair.referredByCode.trim(),
         }),
       });
@@ -428,6 +430,7 @@ export default function MobileRepairDashboard({
           phone: "",
           device: "",
           issue: "",
+          agreedCost: "",
           referredByCode: "",
         });
       }
@@ -774,14 +777,32 @@ export default function MobileRepairDashboard({
     );
   };
 
-  const handleSendSms = (e) => {
+  const handleSendSms = async (e) => {
     e.preventDefault();
     if (!smsMessage.trim() || selectedIds.length === 0) return;
-    alert(
-      `پیامک با موفقیت به ${selectedIds.length} مخاطب ارسال شد.\nمتن پیام: ${smsMessage}`,
-    );
-    setSmsMessage("");
-    setSelectedIds([]);
+    try {
+      const res = await fetch("/api/sms/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repairIds: selectedIds,
+          message: smsMessage.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        alert(
+          `پیامک برای ${data.sentCount} از ${data.total} شماره ارسال شد.`,
+        );
+        setSmsMessage("");
+        setSelectedIds([]);
+      } else {
+        alert(data.error || "خطا در ارسال پیامک");
+      }
+    } catch (err) {
+      console.error("خطا در ارسال پیامک گروهی:", err);
+      alert("خطا در ارتباط با سرور");
+    }
   };
 
   const liveModalProfit = useMemo(() => {
@@ -1721,6 +1742,21 @@ export default function MobileRepairDashboard({
                   }
                   className="w-full p-2 border rounded-lg text-sm resize-none bg-transparent"
                   placeholder="توضیح خرابی..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1">
+                  هزینه توافقی اولیه (تومان - اختیاری)
+                </label>
+                <input
+                  type="number"
+                  value={newRepair.agreedCost}
+                  onChange={(e) =>
+                    setNewRepair({ ...newRepair, agreedCost: e.target.value })
+                  }
+                  className="w-full p-2 border rounded-lg text-sm font-mono dir-ltr text-right bg-transparent"
+                  placeholder="در صورت توافق قیمت هنگام پذیرش..."
                 />
               </div>
 
