@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-royal-50: #ecfdf5;
+  --color-royal-100: #d1fae5;
+  --color-royal-600: #059669;
+  --color-royal-700: #047857;
+  --color-royal-800: #065f46;
+  --color-royal-900: #064e3b;
+  --font-sans: Vazirmatn, Tahoma, sans-serif;
+}
+
+@utility dir-rtl {
+  direction: rtl;
+}
+
+@utility dir-ltr {
+  direction: ltr;
+}
+
+body {
+  background-color: #f1f5f9;
+}
