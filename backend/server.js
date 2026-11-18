@@ -795,7 +795,7 @@ app.post('/api/repairs', requireAuth('dashboard'), (req, res) => {
   // ارسال پیامک بعد از ذخیره و بدون انتظار (تا پاسخ معطل پنل پیامک نشود)
   sendSms(
     cleanPhone,
-    `مشتری گرامی ${name}، دستگاه شما (${device}) با کد پیگیری ${newId} در تعمیرات تخصصی ای‌پلاس پذیرش شد.`
+    `ای‌پلاس: دستگاه ${device} پذیرش شد.\nکد پیگیری: ${newId}\nبرای پیگیری وضعیت تعمیر، کد خود را در سایت وارد کنید.`
   );
 
   res.status(201).json(newRepairItem);
@@ -869,7 +869,7 @@ app.put('/api/repairs/:id/status', requireAuth('dashboard'), (req, res) => {
       repair.costApproved = 'approved';
       smsQueue.push([
         repair.phone,
-        `مشتری گرامی، دستگاه (${repair.device}) بررسی شد و تعمیر آن شروع شد.\nایراد فنی: ${repair.technicalIssue}\nهزینه طبق توافق: ${fmt(newCost)} تومان\n${timeLine}`,
+        `ای‌پلاس: تعمیر ${repair.device} شروع شد.\nهزینه: ${fmt(newCost)} تومان (طبق توافق)\n${timeLine}`,
       ]);
     } else {
       repair.previousEstimatedCost = agreed; // صفر یعنی قبلاً مبلغی توافق نشده بود
@@ -880,7 +880,7 @@ app.put('/api/repairs/:id/status', requireAuth('dashboard'), (req, res) => {
           : `هزینه برآوردشده: ${fmt(newCost)} تومان`;
       smsQueue.push([
         repair.phone,
-        `مشتری گرامی، دستگاه (${repair.device}) بررسی شد.\nایراد فنی: ${repair.technicalIssue}\n${changeLine}\n${timeLine}\nلطفاً جهت تایید هزینه وارد پنل کاربری خود در ای‌پلاس شوید.`,
+        `ای‌پلاس: دستگاه ${repair.device} بررسی شد.\n${changeLine}\n${timeLine}\nجهت تایید هزینه، با کد پیگیری ${repair.id} وارد پنل کاربری شوید.`,
       ]);
     }
   }
@@ -890,7 +890,7 @@ app.put('/api/repairs/:id/status', requireAuth('dashboard'), (req, res) => {
     repair.readyDate = getCurrentDateTime();
     smsQueue.push([
       repair.phone,
-      `مشتری گرامی ${repair.name}، دستگاه شما (${repair.device}) با کد ${repair.id} آماده تحویل می‌باشد. لطفاً جهت دریافت به فروشگاه ای‌پلاس مراجعه فرمایید.`,
+      `ای‌پلاس: دستگاه ${repair.device} تعمیر شد و آماده تحویل است.\nکد: ${repair.id}\nمنتظر مراجعه شما هستیم.`,
     ]);
   }
 
@@ -970,7 +970,7 @@ app.put('/api/repairs/:id/status', requireAuth('dashboard'), (req, res) => {
         repair.referralRewardPaid = true;
         smsQueue.push([
           referrer.phone,
-          `ای‌پلاس: به‌خاطر معرفی دوستتان، ${fmt(REFERRAL_REWARD)} تومان به کیف پول شما اضافه شد.`,
+          `ای‌پلاس: ${fmt(REFERRAL_REWARD)} تومان پاداش معرفی به کیف پول شما اضافه شد.`,
         ]);
       }
     }
