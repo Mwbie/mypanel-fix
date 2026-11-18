@@ -1,50 +1,53 @@
-const axios = require('axios');
-const qs = require('qs');
-
 // اطلاعات پنل پیامک فقط از متغیرهای محیطی (فایل .env) خوانده می‌شود
 const getConfig = () => ({
   username: process.env.SMS_USERNAME,
   password: process.env.SMS_PASSWORD,
-  sendernumber: process.env.SMS_SENDER,
+  sender: process.env.SMS_SENDER,
 });
 
 const isSmsConfigured = () => {
   const c = getConfig();
-  return Boolean(c.username && c.password && c.sendernumber);
+  return Boolean(c.username && c.password && c.sender);
 };
 
 const sendSms = async (mobile, textMessage) => {
   if (!isSmsConfigured()) {
-    console.warn('[SMS] تنظیمات پیامک (SMS_USERNAME / SMS_PASSWORD / SMS_SENDER) ست نشده؛ پیامک ارسال نشد.');
+    console.warn(`[DEV] پیامک به ${mobile}: ${textMessage}`);
     return { success: false, error: 'sms_not_configured' };
   }
   const cfg = getConfig();
+  const cleanMobile = String(mobile).replace(/\D/g, '');
+
+  // ملی‌پیامک REST API
+  const url = 'https://rest.payamak-panel.com/api/SendSMS/SendSMS';
+  const params = new URLSearchParams({
+    username: cfg.username,
+    password: cfg.password,
+    to: cleanMobile,
+    from: cfg.sender,
+    text: textMessage,
+    isFlash: 'false',
+  });
 
   try {
-    // طبق راهنما: نام کاربری و رمز در کوئری آدرس ارسال می‌شوند
-    const url = `https://niksms.com/api/PublicApi/PtpSms?username=${encodeURIComponent(cfg.username)}&password=${encodeURIComponent(cfg.password)}`;
-    const cleanMobile = String(mobile).replace(/\D/g, '');
-
-    const postData = {
-      message: textMessage,
-      numbers: cleanMobile,
-      sendernumber: cfg.sendernumber,
-      sendtype: 1,
-    };
-
-    const response = await axios.post(url, qs.stringify(postData), {
+    const res = await fetch(url, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      timeout: 10000,
+      body: params.toString(),
+      signal: AbortSignal.timeout(10000),
     });
 
-    if (response.data && response.data.Status === 0) {
-      return { success: true, data: response.data };
+    const data = await res.json();
+
+    // RetStatus === 1 یعنی ارسال موفق
+    if (data && data.RetStatus === 1) {
+      return { success: true, data };
     }
-    console.error('SMS rejected:', response.data);
-    return { success: false, error: response.data };
+
+    console.error('[SMS] ارسال ناموفق:', data);
+    return { success: false, error: data };
   } catch (error) {
-    // عمداً خود url (که شامل رمز است) لاگ نمی‌شود
-    console.error('SMS Send Error:', error.response?.data || error.message);
+    console.error('[SMS] خطا در ارسال:', error.message);
     return { success: false, error: error.message };
   }
 };
