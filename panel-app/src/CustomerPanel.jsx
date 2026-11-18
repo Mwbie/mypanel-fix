@@ -332,7 +332,7 @@ export default function CustomerPanel({ customerData, onLogout }) {
               currentRepairs.map((item) => {
                 const isCostIncreased =
                   item.previousEstimatedCost > 0 &&
-                  item.estimatedCost > item.previousEstimatedCost;
+                  item.estimatedCost !== item.previousEstimatedCost;
 
                 const currentRating = ratingInputs[item.id]?.rating || 0;
                 const currentFeedback = ratingInputs[item.id]?.feedback || "";

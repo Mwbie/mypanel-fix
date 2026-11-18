@@ -426,6 +426,12 @@ const nonNegative = (v) => {
 };
 const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 
+// مبلغ توافق‌شده با مشتری: اگر agreedCost ثبت شده برگردان، وگرنه از estimatedCost قدیمی استفاده کن
+const getAgreedCost = (r) => {
+  if (Number(r.agreedCost) > 0) return Number(r.agreedCost);
+  return r.costApproved === 'approved' ? Number(r.estimatedCost) || 0 : 0;
+};
+
 // کاربر لاگین‌شده را از توکن + وضعیت فعلی دیتابیس می‌سازد
 // (با حذف پرسنل یا تغییر دسترسی‌ها، اثر بلافاصله اعمال می‌شود)
 const getUserFromRequest = (req) => {
@@ -693,6 +699,8 @@ app.post('/api/repairs', requireAuth('dashboard'), (req, res) => {
   const issue = oneLine(req.body.issue, 500);
   const cleanPhone = toEnglishDigits(req.body.phone || '').trim();
   const referredByCode = oneLine(req.body.referredByCode, 20).toUpperCase();
+  const agreedCostRaw = nonNegative(req.body.agreedCost);
+  const agreedCost = agreedCostRaw !== null ? agreedCostRaw : 0;
 
   if (!name || !cleanPhone || !device || !issue) {
     return res.status(400).json({ error: 'لطفاً تمام فیلدهای الزامی را پر کنید' });
@@ -741,10 +749,11 @@ app.post('/api/repairs', requireAuth('dashboard'), (req, res) => {
     status: 'received',
     receptionDate: getCurrentDateTime(),
     technicalIssue: '',
-    estimatedCost: 0,
+    estimatedCost: agreedCost,
+    agreedCost,
     previousEstimatedCost: 0,
     estimatedReadyTime: '',
-    costApproved: 'pending',
+    costApproved: agreedCost > 0 ? 'approved' : 'pending',
     serviceDescription: '',
     warrantyMonths: 0,
     partCost: 0,
